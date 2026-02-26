@@ -161,3 +161,4 @@ MIT
 - Bo Peng (RWKV) for encouragement and the "reduce loss to 3.x" challenge
 - FineWeb-Edu dataset by HuggingFace
 - Anthropic Claude for architecture discussions and debugging
+- My Model https://huggingface.co/zerdovzad/Nord-AI/
