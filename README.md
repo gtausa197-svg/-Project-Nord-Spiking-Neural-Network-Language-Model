@@ -154,7 +154,7 @@ Built by a solo 18-year-old student from Ukraine, studying electronics in Norway
 
 ## 📄 License
 
-MIT
+Apache License 2.0
 
 ## 🙏 Acknowledgments
 
