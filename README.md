@@ -17,9 +17,9 @@ Nord uses biologically-inspired spiking neurons with membrane potentials, firing
 | Metric | Value |
 |--------|-------|
 | Parameters | 144.3M |
-| Training loss | 4.59 (34k steps) |
+| Training loss | 4.4 (54k steps) |
 | Inference sparsity | 97-99.8% |
-| Training data | FineWeb-Edu (2.5B tokens) |
+| Training data | FineWeb-Edu (3.5B tokens) |
 | Training cost | ~$10 (rented A5000) |
 | Mobile inference | ✅ Android via Termux |
 | Online learning | ✅ STDP during inference |
