@@ -162,3 +162,6 @@ Apache License 2.0
 - FineWeb-Edu dataset by HuggingFace
 - Anthropic Claude for architecture discussions and debugging
 - My Model https://huggingface.co/zerdovzad/Nord-AI/
+- Thank this person for the visual presentation https://mnbnkr.github.io/-Project-Nord-Spiking-Neural-Network-Language-Model/
+- https://github.com/mnbnkr
+- My Wiki https://github.com/gtausa197-svg/-Project-Nord-Spiking-Neural-Network-Language-Model/wiki
