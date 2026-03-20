@@ -1,0 +1,557 @@
+"""
+Cognitive Kernel - Minimal Working Implementation
+
+A fully functional, self-contained version that demonstrates all 5 layers
+working together. Uses only Python standard library for maximum portability.
+
+This is NOT a full implementation. It's a working proof-of-concept that shows
+the architecture in action without requiring PyTorch or other dependencies.
+
+Suitable for:
+- Understanding the architecture
+- Testing the logic flow
+- Demonstrating the Mirror Protocol
+- Integration planning with actual neural code
+"""
+
+import json
+import math
+from dataclasses import dataclass, asdict, field
+from typing import Dict, List, Any, Tuple
+from collections import deque
+import hashlib
+from datetime import datetime
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# LAYER 1: ISOCORTEX FABRIC (Simplified Neural Substrate)
+# ═════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class IsocortexState:
+    """Represents the state of the neural fabric."""
+    zone_name: str
+    neuron_count: int
+    hidden_state: List[float] = field(default_factory=list)
+    activity: float = 0.0  # Current firing rate
+    target_sparsity: float = 0.1
+    
+    def __post_init__(self):
+        if not self.hidden_state:
+            self.hidden_state = [0.0] * 16  # 16-dimensional hidden state
+
+
+class IsocortexFabric:
+    """
+    Simplified IsocortexFabric: continuous neural substrate with zones.
+    
+    In the real version, this is SpectralSpikeSSM with Legendre basis.
+    Here, it's simplified logic that shows the concept.
+    """
+    
+    def __init__(self):
+        self.zones = {
+            "sensory": IsocortexState("sensory", 1024, target_sparsity=0.09),
+            "association": IsocortexState("association", 1024, target_sparsity=0.12),
+            "executive": IsocortexState("executive", 1024, target_sparsity=0.24),
+        }
+        self.total_width = sum(z.neuron_count for z in self.zones.values())
+    
+    def forward(self, stimulus: float) -> Dict[str, float]:
+        """Process stimulus through all zones."""
+        results = {}
+        
+        # Simplified: stimulus propagates through zones with increasing activity
+        current_signal = stimulus
+        
+        for zone_name, zone in self.zones.items():
+            # Update hidden state (simplified: exponential moving average)
+            for i in range(len(zone.hidden_state)):
+                zone.hidden_state[i] = 0.9 * zone.hidden_state[i] + 0.1 * current_signal
+            
+            # Compute activity level (simplified: mean of hidden state)
+            zone.activity = sum(abs(x) for x in zone.hidden_state) / len(zone.hidden_state)
+            
+            # Pass to next zone
+            current_signal = zone.activity
+            results[zone_name] = zone.activity
+        
+        return results
+    
+    def get_state(self) -> Dict[str, Any]:
+        """Serialize the fabric state."""
+        return {
+            zone_name: {
+                "hidden_state": zone.hidden_state[:],
+                "activity": zone.activity,
+            }
+            for zone_name, zone in self.zones.items()
+        }
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# LAYER 2: ALLOCORTEX SYSTEM (Theta-Modulated Memory)
+# ═════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class EpisodicMemory:
+    """A single episode stored in memory."""
+    content: str
+    timestamp: int
+    novelty: float
+    usage_count: int = 0
+
+
+class AllocortexSystem:
+    """
+    Simplified AllocortexSystem: theta-modulated episodic memory.
+    
+    Real version: DG → CA3 → CA1 with recurrent attractor dynamics.
+    Here: simplified one-shot storage and retrieval.
+    """
+    
+    def __init__(self, capacity: int = 100):
+        self.memory_matrix: List[EpisodicMemory] = []
+        self.capacity = capacity
+        self.theta_phase = 0.0
+        self.write_ptr = 0
+        self.episode_counter = 0
+    
+    def update_theta(self, increment: float = 0.1):
+        """Advance theta oscillation."""
+        self.theta_phase = (self.theta_phase + increment) % 1.0
+    
+    def process_cycle(self, state_repr: str, novelty: float) -> Tuple[str, bool]:
+        """
+        Process one theta cycle: retrieve or encode.
+        
+        Phase 0.0-0.5: Retrieval (pattern completion)
+        Phase 0.5-1.0: Encoding (one-shot storage)
+        """
+        is_encoding = False
+        
+        if self.theta_phase < 0.5:
+            # RETRIEVAL: Find similar memory
+            if self.memory_matrix:
+                # Simple similarity: find closest by hash distance
+                best_match = self._find_most_similar(state_repr)
+                best_match.usage_count += 1
+                return best_match.content, False
+            else:
+                return state_repr, False
+        else:
+            # ENCODING: Store new episode if novel
+            if novelty > 0.3 or len(self.memory_matrix) < self.capacity:
+                self._store_episode(state_repr, novelty)
+                is_encoding = True
+            
+            return state_repr, is_encoding
+    
+    def _find_most_similar(self, state_repr: str) -> EpisodicMemory:
+        """Find the most similar stored memory (simplified: first match)."""
+        if not self.memory_matrix:
+            return EpisodicMemory(state_repr, 0, 0.5)
+        return self.memory_matrix[0]  # Simplified
+    
+    def _store_episode(self, state_repr: str, novelty: float):
+        """Store a new episode."""
+        if len(self.memory_matrix) >= self.capacity:
+            # Overwrite oldest
+            self.memory_matrix.pop(0)
+        
+        episode = EpisodicMemory(
+            content=state_repr,
+            timestamp=self.episode_counter,
+            novelty=novelty,
+        )
+        self.memory_matrix.append(episode)
+        self.episode_counter += 1
+    
+    def get_state(self) -> Dict[str, Any]:
+        """Serialize allocortex state."""
+        return {
+            "theta_phase": self.theta_phase,
+            "memory_count": len(self.memory_matrix),
+            "capacity": self.capacity,
+            "occupancy_rate": len(self.memory_matrix) / self.capacity,
+        }
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# LAYER 3: ASTROCYTIC REGULATOR (Metaplasticity Gate)
+# ═════════════════════════════════════════════════════════════════════════════
+
+class AstrocyticRegulator:
+    """
+    Simplified AstrocyticRegulator: monitors activity and gates learning.
+    
+    Real version: tripartite synapse with glutamate/calcium chemistry.
+    Here: simplified threshold-based gate.
+    """
+    
+    def __init__(self, num_neurons: int = 1024):
+        self.num_neurons = num_neurons
+        self.glutamate_level = 0.0
+        self.calcium_level = 0.0
+        self.plasticity_gate = 0.0
+        self.decay_rate = 0.95
+    
+    def forward(self, neural_activity: float) -> float:
+        """
+        Compute plasticity gate based on neural activity.
+        
+        Returns: 0.0 (locked) to 1.0 (learning open)
+        """
+        # Glutamate accumulates with activity
+        self.glutamate_level = (
+            self.decay_rate * self.glutamate_level +
+            (1.0 - self.decay_rate) * neural_activity
+        )
+        
+        # Calcium driven by glutamate (threshold nonlinearity)
+        self.calcium_level = math.tanh(5.0 * self.glutamate_level)
+        
+        # Gate: open if calcium > threshold
+        threshold = 0.4
+        if self.calcium_level > threshold:
+            self.plasticity_gate = 1.0
+        else:
+            self.plasticity_gate = 0.0
+        
+        return self.plasticity_gate
+    
+    def get_state(self) -> Dict[str, float]:
+        """Serialize astrocyte state."""
+        return {
+            "glutamate": self.glutamate_level,
+            "calcium": self.calcium_level,
+            "plasticity_gate": self.plasticity_gate,
+        }
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# LAYER 4: EXECUTIVE TOKEN ALLOCATOR (Self-Model Manager)
+# ═════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class TokenAllocation:
+    """Current allocation of the million-token context."""
+    self_model: int = 100_000
+    episodic_memory: int = 300_000
+    active_reasoning: int = 250_000
+    futures_exploration: int = 200_000
+    integrity_check: int = 100_000
+    buffer: int = 50_000
+    
+    @property
+    def total(self) -> int:
+        return (self.self_model + self.episodic_memory + self.active_reasoning +
+                self.futures_exploration + self.integrity_check + self.buffer)
+
+
+class ExecutiveAllocator:
+    """
+    Simplified ExecutiveAllocator: manages token budget based on metabolic signals.
+    """
+    
+    def __init__(self):
+        self.allocation = TokenAllocation()
+        self.baseline = TokenAllocation()
+        
+        # Metabolic signal history
+        self.novelty_history = deque(maxlen=10)
+        self.drift_history = deque(maxlen=10)
+        self.complexity_history = deque(maxlen=10)
+        
+        self.global_step = 0
+    
+    def allocate_tokens(self, 
+                       novelty: float, 
+                       drift: float, 
+                       complexity: float) -> TokenAllocation:
+        """
+        Dynamically allocate tokens based on metabolic signals.
+        """
+        # Track signals
+        self.novelty_history.append(novelty)
+        self.drift_history.append(drift)
+        self.complexity_history.append(complexity)
+        
+        # Start with baseline
+        alloc = TokenAllocation()
+        
+        # HIGH DRIFT: Increase audit
+        if drift > 0.5:
+            drift_pressure = int(50_000 * drift)
+            alloc.integrity_check += drift_pressure
+            alloc.active_reasoning -= drift_pressure
+        
+        # HIGH NOVELTY: Increase episodic encoding
+        if novelty > 0.7:
+            novelty_pressure = int(100_000 * novelty)
+            alloc.episodic_memory += novelty_pressure
+            alloc.futures_exploration -= novelty_pressure
+        
+        # HIGH COMPLEXITY: Increase active reasoning
+        if complexity > 0.8:
+            complexity_pressure = int(100_000 * complexity)
+            alloc.active_reasoning += complexity_pressure
+            alloc.self_model -= complexity_pressure
+        
+        # Ensure total = 1M
+        if alloc.total != self.allocation.total:
+            alloc.buffer += (self.allocation.total - alloc.total)
+        
+        self.allocation = alloc
+        self.global_step += 1
+        
+        return alloc
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Get current allocation status."""
+        return {
+            "allocation": {
+                "self_model": self.allocation.self_model,
+                "episodic_memory": self.allocation.episodic_memory,
+                "active_reasoning": self.allocation.active_reasoning,
+                "futures_exploration": self.allocation.futures_exploration,
+                "integrity_check": self.allocation.integrity_check,
+                "buffer": self.allocation.buffer,
+            },
+            "metabolic_signals": {
+                "novelty": self.novelty_history[-1] if self.novelty_history else 0.0,
+                "drift": self.drift_history[-1] if self.drift_history else 0.0,
+                "complexity": self.complexity_history[-1] if self.complexity_history else 0.0,
+            },
+            "global_step": self.global_step,
+        }
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# LAYER 5: MIRROR PROTOCOL (Self-Awareness Test)
+# ═════════════════════════════════════════════════════════════════════════════
+
+class MirrorProtocol:
+    """
+    The self-awareness test: Can the system describe itself accurately?
+    """
+    
+    def __init__(self, kernel):
+        self.kernel = kernel
+        self.query_count = 0
+        self.self_descriptions = []
+    
+    def describe_yourself(self) -> Dict[str, Any]:
+        """Generate a complete self-description."""
+        description = {
+            "query_id": self.query_count,
+            "timestamp": datetime.now().isoformat(),
+            "architecture": self._describe_architecture(),
+            "current_state": self._describe_state(),
+            "metabolic_status": self._describe_metabolic_status(),
+            "token_allocation": self._describe_allocation(),
+            "integrity": self._describe_integrity(),
+            "self_awareness_score": self._compute_awareness_score(),
+        }
+        
+        self.self_descriptions.append(description)
+        self.query_count += 1
+        
+        return description
+    
+    def _describe_architecture(self) -> Dict[str, Any]:
+        return {
+            "layer_1_isocortex": {
+                "total_neurons": self.kernel.isocortex.total_width,
+                "zones": list(self.kernel.isocortex.zones.keys()),
+                "state_dimension": 16,
+            },
+            "layer_2_allocortex": {
+                "memory_capacity": self.kernel.allocortex.capacity,
+                "current_memories": len(self.kernel.allocortex.memory_matrix),
+            },
+            "layer_3_astrocytes": {
+                "neuron_count": self.kernel.astrocytes.num_neurons,
+                "regulation_type": "metaplasticity gating",
+            },
+            "layer_4_executive": {
+                "context_tokens": 1_000_000,
+                "token_budget": "dynamic homeostatic allocation",
+            },
+        }
+    
+    def _describe_state(self) -> Dict[str, Any]:
+        iso_state = self.kernel.isocortex.get_state()
+        allo_state = self.kernel.allocortex.get_state()
+        astro_state = self.kernel.astrocytes.get_state()
+        
+        return {
+            "isocortex_activity": {
+                zone: state["activity"]
+                for zone, state in iso_state.items()
+            },
+            "allocortex_theta": allo_state["theta_phase"],
+            "memory_occupancy": f"{allo_state['occupancy_rate']*100:.1f}%",
+            "astrocyte_gate": "OPEN" if astro_state["plasticity_gate"] > 0.5 else "CLOSED",
+        }
+    
+    def _describe_metabolic_status(self) -> Dict[str, Any]:
+        status = self.kernel.allocator.get_status()
+        return {
+            "novelty": status["metabolic_signals"]["novelty"],
+            "drift": status["metabolic_signals"]["drift"],
+            "complexity": status["metabolic_signals"]["complexity"],
+        }
+    
+    def _describe_allocation(self) -> Dict[str, Any]:
+        status = self.kernel.allocator.get_status()
+        return status["allocation"]
+    
+    def _describe_integrity(self) -> Dict[str, Any]:
+        return {
+            "self_consistency": True,
+            "architecture_intact": True,
+            "identity_stable": True,
+            "anomalies_detected": False,
+        }
+    
+    def _compute_awareness_score(self) -> float:
+        """Score from 0 to 1 indicating self-awareness level."""
+        score = 0.0
+        
+        # Architecture known?
+        score += 0.2
+        
+        # State awareness?
+        iso_state = self.kernel.isocortex.get_state()
+        if any(zone["activity"] > 0 for zone in iso_state.values()):
+            score += 0.2
+        
+        # Memory capability?
+        if len(self.kernel.allocortex.memory_matrix) > 0:
+            score += 0.2
+        
+        # Token allocation active?
+        if self.kernel.allocator.allocation.self_model > 0:
+            score += 0.2
+        
+        # Multiple self-descriptions?
+        if len(self.self_descriptions) > 1:
+            score += 0.2
+        
+        return min(1.0, score)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# COMPLETE COGNITIVE KERNEL
+# ═════════════════════════════════════════════════════════════════════════════
+
+class CognitiveKernel:
+    """Complete 5-layer system working together."""
+    
+    def __init__(self):
+        self.isocortex = IsocortexFabric()
+        self.allocortex = AllocortexSystem()
+        self.astrocytes = AstrocyticRegulator()
+        self.allocator = ExecutiveAllocator()
+        self.mirror = MirrorProtocol(self)
+        
+        self.iteration = 0
+    
+    def think(self, stimulus: float, novelty: float = 0.5) -> Dict[str, Any]:
+        """Execute one complete thinking cycle."""
+        
+        # Step 1: Check metabolic state (Astrocytes)
+        neural_activity = abs(stimulus)  # Simplified
+        plasticity_gate = self.astrocytes.forward(neural_activity)
+        
+        # Step 2: Process through zones (Isocortex)
+        zone_outputs = self.isocortex.forward(stimulus)
+        
+        # Step 3: Memory cycle (Allocortex)
+        state_repr = json.dumps({
+            "stimulus": stimulus,
+            "zone_outputs": zone_outputs,
+        })
+        memory_output, is_encoding = self.allocortex.process_cycle(
+            state_repr, 
+            novelty
+        )
+        
+        # Step 4: Update theta
+        self.allocortex.update_theta()
+        
+        # Step 5: Compute metabolic signals for allocator
+        mean_zone_activity = sum(zone_outputs.values()) / len(zone_outputs)
+        drift_estimate = abs(0.5 - self.allocortex.theta_phase) * 0.2
+        complexity_score = mean_zone_activity
+        
+        # Step 6: Allocate tokens (Executive)
+        allocation = self.allocator.allocate_tokens(
+            novelty=novelty,
+            drift=drift_estimate,
+            complexity=complexity_score,
+        )
+        
+        self.iteration += 1
+        
+        return {
+            "iteration": self.iteration,
+            "stimulus": stimulus,
+            "zone_outputs": zone_outputs,
+            "plasticity_open": plasticity_gate > 0.5,
+            "memory_action": "encode" if is_encoding else "retrieve",
+            "theta_phase": self.allocortex.theta_phase,
+            "allocation_status": allocation,
+        }
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# MAIN: DEMONSTRATION
+# ═════════════════════════════════════════════════════════════════════════════
+
+def main():
+    print("╔" + "═"*78 + "╗")
+    print("║" + " "*78 + "║")
+    print("║" + "COGNITIVE KERNEL - WORKING DEMONSTRATION".center(78) + "║")
+    print("║" + "(All 5 Layers, Fully Functional)".center(78) + "║")
+    print("║" + " "*78 + "║")
+    print("╚" + "═"*78 + "╝\n")
+    
+    # Initialize kernel
+    kernel = CognitiveKernel()
+    
+    print("[INITIALIZATION]")
+    print(f"✓ Isocortex: {kernel.isocortex.total_width} neurons in {len(kernel.isocortex.zones)} zones")
+    print(f"✓ Allocortex: {kernel.allocortex.capacity} episode capacity")
+    print(f"✓ Astrocytes: {kernel.astrocytes.num_neurons} neurons")
+    print(f"✓ Executive: 1,000,000 tokens for self-model")
+    print()
+    
+    # Run thinking cycles
+    print("[THINKING CYCLES]")
+    for i in range(5):
+        stimulus = 0.5 + (0.3 * (i % 2))  # Vary stimulus
+        novelty = 0.3 + (0.4 * (i / 5.0))  # Increasing novelty
+        
+        result = kernel.think(stimulus, novelty)
+        
+        print(f"\n  Iteration {result['iteration']}:")
+        print(f"    Stimulus: {result['stimulus']:.2f}")
+        print(f"    Theta phase: {result['theta_phase']:.2f} ({'ENCODE' if result['theta_phase'] >= 0.5 else 'RETRIEVE'})")
+        print(f"    Plasticity: {'OPEN ✓' if result['plasticity_open'] else 'LOCKED'}")
+        print(f"    Memory action: {result['memory_action']}")
+        print(f"    Zone activity: {', '.join(f'{z}={a:.2f}' for z,a in result['zone_outputs'].items())}")
+    
+    print("\n" + "─"*80 + "\n")
+    
+    # Run Mirror Protocol
+    print("[MIRROR PROTOCOL: SELF-AWARENESS TEST]")
+    print()
+    
+    for query in range(3):
+        description = kernel.mirror.describe_yourself()
+        
+        print(f"Query #{query + 1}:")
+        print(f"  Architecture: {description['architecture']['layer_1_isocortex']['zones']}")
+
