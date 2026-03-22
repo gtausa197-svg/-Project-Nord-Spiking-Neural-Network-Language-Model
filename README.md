@@ -241,7 +241,7 @@ nord-ai/
 
 Nord is fully open-source, built with zero institutional funding. Total cost: **$260** out of pocket.
 
-- **Discord**: [Join our server](link) — live updates, architecture discussion
+- **Discord**: [Join our server](https://discord.gg/cFghG89P) — live updates, architecture discussion
 - **Website**: https://www.nord-ai.net
 - **Wiki**: https://github.com/gtausa197-svg/-Project-Nord-Spiking-Neural-Network-Language-Model/wiki
 
