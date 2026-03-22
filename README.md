@@ -269,6 +269,7 @@ Apache 2.0
 - Prof. Nikola Kasabov (KEDRI/AUT) for feedback
 - Visual presentation by [mnbnkr](https://mnbnkr.github.io/-Project-Nord-Spiking-Neural-Network-Language-Model/)
 - HuggingFace: https://huggingface.co/zerdovzad/Nord-AI
+- By me cooffe https://buymeacoffee.com/zerdovzad?new=1
 
 ---
 
