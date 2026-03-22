@@ -6,22 +6,23 @@
 
 <p align="center">
   <b>Brain-Inspired Spiking Neural Network Language Model</b><br>
-  <i>Spike-Driven MoE · Zonal Specialization · 91% Sparsity · 140M Parameters</i>
+  <i>Spike-Driven MoE · Zonal Specialization · 93% Sparsity · 618M Parameters · Instruction-Tuned</i>
 </p>
 
 <p align="center">
   <a href="https://www.reddit.com/r/LocalLLaMA/"><img src="https://img.shields.io/badge/r%2FLocalLLaMA-51K%20views-orange?logo=reddit" alt="Reddit"/></a>
   <img src="https://img.shields.io/badge/Top%205%25-Poster-gold" alt="Top 5%"/>
-  <img src="https://img.shields.io/badge/Parameters-139.9M-blue" alt="Params"/>
-  <img src="https://img.shields.io/badge/Sparsity-91%25-green" alt="Sparsity"/>
+  <img src="https://img.shields.io/badge/Parameters-618.8M-blue" alt="Params"/>
+  <img src="https://img.shields.io/badge/Sparsity-93%25-green" alt="Sparsity"/>
+  <img src="https://img.shields.io/badge/Loss-3.65-brightgreen" alt="Loss"/>
   <img src="https://img.shields.io/badge/License-Apache%202.0-red" alt="License"/>
 </p>
 
 ---
 
-## What is Nord?
+## 🔥 What is Nord?
 
-Nord is a **spiking neural network (SNN) language model** that processes text using biologically-inspired spike patterns instead of continuous activations. Unlike standard transformers where 100% of neurons are active for every token, Nord activates only **3-9% of neurons** at any time — with different brain-inspired zones specializing in different functions.
+Nord is a **spiking neural network (SNN) language model** that processes text using biologically-inspired spike patterns instead of continuous activations. Unlike standard transformers where 100% of neurons are active for every token, Nord activates only **7-17% of neurons** at any time — with different brain-inspired zones specializing in different functions.
 
 This is not a fine-tuned LLM. Nord is trained **from scratch** with a novel architecture that combines:
 
@@ -29,136 +30,168 @@ This is not a fine-tuned LLM. Nord is trained **from scratch** with a novel arch
 - **Spike-Driven Mixture of Experts (MoE)** routing
 - **Brain-inspired zonal organization** (Sensory → Association → Memory → Executive)
 - **Temporal spike coding** across multiple timesteps
-- **91% average sparsity** during both training and inference
+- **Instruction tuning** (OpenHermes 2.5) — first SNN to attempt chat-style responses
+- **87-93% average sparsity** during both training and inference
 
-## Why Spikes?
+## 🏆 Key Results
 
-Standard transformers activate all parameters for every token. A 70B model uses 70B parameters per token, regardless of complexity.
+| Metric | 140M (v4.2) | 618M (v4.2) |
+|---|---|---|
+| Parameters | 139.9M | **618.8M** |
+| Training loss | 4.30 | **3.65** |
+| Sparsity | 91% | **87-93%** |
+| Architecture | d=512, 6 blocks | **d=1536, 10 blocks (3S+3A+4E)** |
+| Training | FineWeb-Edu | **FineWeb-Edu + OpenHermes 2.5** |
+| Inference speed | 7.3 tok/s | **6.8 tok/s (RTX 4090 Ti)** |
+| Training cost | ~$15 | **~$260** |
+| Instruction tuning | No | **Yes (first SNN with instruction tuning)** |
 
-Spiking networks are fundamentally different: neurons communicate through discrete spikes, and most neurons are silent most of the time. This means:
+## 🧠 Why Spikes?
 
 | | Transformer | Nord SNN |
 |---|---|---|
-| **Active params per token** | 100% | 3-9% |
+| **Active params per token** | 100% | 7-17% |
 | **Computation** | Dense matrix multiply | Sparse spike events |
 | **Energy model** | GPU-optimized | Neuromorphic-compatible |
 | **Biological similarity** | Low | High |
 
-If SNN language models can match transformer quality at scale, they could run 86B-parameter models with the compute cost of a 3-4B model.
+If SNN language models can match transformer quality at scale, they could run 86B-parameter models with the compute cost of a 3-4B model on neuromorphic hardware.
 
-## Architecture
+## 🏗️ Architecture (618M)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    TEMPORAL SPIKE ENCODER                    │
 │         Token → 8 fast + 2 slow timestep currents           │
+│         d_model=1536, vocab=128K (Llama-3.2 tokenizer)      │
 ├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────┐   Spike rates: 8-16%                      │
-│  │  SENSORY    │   2 blocks, standard FFN                   │
-│  │  ZONE       │   Feature extraction                       │
+│  ┌─────────────┐   Spike rates: 3-7%                       │
+│  │  SENSORY    │   3 blocks, FFN + LIF (66.3M params)      │
+│  │  ZONE       │   Feature extraction (quiet)               │
 │  └──────┬──────┘                                            │
-│         │                                                   │
-│  ┌──────▼──────┐   Spike rates: 15-27%                     │
-│  │ ASSOCIATION │   2 blocks, Spike-Driven MoE               │
+│  ┌──────▼──────┐   Spike rates: 4-12%                      │
+│  │ ASSOCIATION │   3 blocks, Spike-Driven MoE (66.4M)       │
 │  │    ZONE     │   4 experts, top-2 routing                 │
 │  └──────┬──────┘                                            │
-│         │                                                   │
-│  ┌──────▼──────┐   Memory neurons: 128                     │
-│  │   MEMORY    │   τ=0.99, gated temporal attention         │
-│  │   CORTEX    │   Multi-head readout over all timesteps    │
+│  ┌──────▼──────┐   Memory neurons: 256                     │
+│  │   MEMORY    │   τ=0.99, gated temporal attention (1.3M)  │
+│  │   CORTEX    │   Multi-head readout, 8 read heads         │
 │  └──────┬──────┘                                            │
-│         │                                                   │
-│  ┌──────▼──────┐   Spike rates: 17-26%                     │
-│  │ EXECUTIVE   │   2 blocks, standard FFN                   │
-│  │    ZONE     │   Decision & output generation             │
+│  ┌──────▼──────┐   Spike rates: 4-33%                      │
+│  │ EXECUTIVE   │   4 blocks, FFN + LIF (88.4M params)      │
+│  │    ZONE     │   Decision & output (loudest zone)         │
 │  └──────┬──────┘                                            │
-│         │                                                   │
 │  ┌──────▼──────┐                                            │
 │  │  READOUT    │   EMA over membrane potential              │
-│  │  + LM HEAD  │   → vocabulary logits                      │
+│  │  + LM HEAD  │   → vocabulary logits (128K)               │
 │  └─────────────┘                                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Key Components
+### Parameter Breakdown (618M)
 
-**Temporal Spike Encoder.** Each token is converted into 10 timestep current injections (8 fast + 2 slow), mimicking how biological neurons encode information through temporal patterns rather than single activations.
+| Component | Parameters |
+|-----------|-----------|
+| Sensory Zone | 66.3M (3 blocks) |
+| Association Zone | 66.4M (3 blocks, MoE) |
+| Memory Cortex | 1.3M |
+| Executive Zone | 88.4M (4 blocks) |
+| Encoder + Readout + LM Head | ~396.4M |
+| **Total** | **618.8M** |
 
-**Associative LIF Neurons.** Every layer uses Leaky Integrate-and-Fire neurons with learnable membrane time constants, voltage thresholds, synaptic currents, and cascade amplification across neural clusters. Spikes are generated through a differentiable ATan surrogate gradient.
+## 📊 Emergent Zonal Specialization
 
-**Spike-Driven MoE.** Association zone blocks route tokens through 4 specialized experts based on spike-rate cluster activity. Only top-2 experts process each token. Load balancing loss prevents expert collapse.
+Zonal specialization **survives and evolves at 4.4x scale**:
 
-**Memory Cortex.** A persistent memory module with slow time constant (τ=0.99) that accumulates information across tokens. Uses multi-head temporal attention to read from all timesteps, with a learned gating mechanism that controls memory influence.
-
-**Zonal Specialization.** The model self-organizes into functionally distinct zones during training — no manual assignment. Sensory zones develop low firing rates for feature extraction, while executive zones develop higher rates for decision-making. This mirrors biological cortical organization.
-
-## Training Results
-
-### Loss Curve
-
-Training on ~2.2M text samples from a general English corpus, single NVIDIA A5000 (24GB):
-
-| Step | Loss | Sparsity | LR | Note |
-|------|------|----------|-----|------|
-| 0 | 8.9 | 68% | warmup | Training start |
-| 1,500 | 6.2 | 69% | 3.0e-04 | Rapid descent |
-| 5,000 | 5.35 | 95% | 3.0e-04 | — |
-| 10,000 | 4.95 | 99% | 3.0e-04 | Plateau (v4.1) |
-| 14,000 | 7.6→5.2 | 75% | 3.0e-04 | v4.2 fixes applied |
-| 20,000 | 4.70 | 91% | 3.0e-04 | New minimum |
-| 30,000 | 4.50 | 91% | 1.2e-04 | Cosine decay starts |
-| 39,000 | 4.30 | 91% | 6.0e-05 | Current best |
-
-### Zonal Spike Rates (step 32K)
-
+**140M zones:**
 ```
-Zone              Spike Rate    Role
-─────────────────────────────────────────
-Sensory [0]       8-10%         Low-level feature extraction
-Sensory [1]       8-10%         Mid-level features
-Association [0]   10-13%        MoE routing & specialization
-Association [1]   10-14%        Cross-expert integration
-Memory Cortex     0.5-1%        Selective long-term storage
-Executive [0]     11-15%        Decision formation
-Executive [1]     22-26%        Final output generation
-─────────────────────────────────────────
-Overall Sparsity: 89-95%
+Sensory:      8-10%   (quiet)
+Association:  10-14%  (moderate, MoE routing)
+Memory:       0.5-1%  (very selective)
+Executive:    11-26%  (loud, decision-making)
 ```
 
-The model **self-organizes** this hierarchy — no explicit supervision forces different zones to have different firing rates. This emergent specialization mirrors biological cortical organization.
+**618M zones:**
+```
+Sensory:      3-7%    (even quieter at scale)
+Association:  4-12%   (MoE routing)
+Memory:       39%     (dramatically more active)
+Executive:    4-33%   (Executive[3]=33%, still loudest)
+```
 
-### Generation Examples (progression)
+Key discovery: **Memory Cortex became 39x more active** at 618M. The model learned that persistent memory is more valuable at larger scale. Not programmed — emergent.
 
-**Step 3,600 (loss 5.5):**
-> "Queen was being too late. The lake is not to be found in a variety of birds and stynesan trees."
+## 📈 Training Progression
 
-**Step 29,000 (loss 4.5):**
-> "The internet is equipped with computers that harness data from television and radio vehicles. Its central and large uses can help business use and share information on devices and systems."
+### Phase 1: FineWeb-Edu (base language, 40GB)
 
-**Step 39,000 (loss 4.3):**
-> "A cybersecurity campaign that uses a computer science machine learning robot to guide players, and has refined algorithms. The popular game research software made by OpenAI security researchers..."
+| Step | Loss | Sparsity | Note |
+|------|------|----------|------|
+| 0 | 13.4 | 68% | Training start |
+| 5,000 | 5.30 | 87% | Basic grammar |
+| 10,000 | 5.00 | 91% | Thematic coherence |
+| 22,000 | 4.90 | 86% | End of base training |
 
-Text quality improves steadily with training. At 140M parameters, coherent multi-sentence generation requires loss < 3.5, which would need significantly more training compute.
+### Phase 2: OpenHermes 2.5 (instruction tuning, 1M examples)
 
-## Version History
+| Step | Loss | Sparsity | Note |
+|------|------|----------|------|
+| 22,200 | 4.76 | 85% | Learning instruction format |
+| 23,000 | 4.20 | 85% | Structure emerging |
+| 25,000 | 3.89 | 86% | Topic relevance improving |
+| 27,200 | **3.65** | **93%** | Structured responses |
 
-| Version | Parameters | Key Innovation | Result |
-|---------|-----------|----------------|--------|
-| v3 | 144M | First SNN LLM, 97% sparsity | 51K Reddit views, loss 4.4 at 54K steps |
-| v3.5 | 500M | Scale test | Sparsity stuck at 100% (spikes dead) |
-| v4.1 | 140M | Spike-driven MoE, zonal architecture, memory cortex | Fixed spike death, loss 4.95 |
-| **v4.2** | **140M** | **Executive clamp fix, adaptive spike regulator** | **Loss 4.3, stable 91% sparsity** |
+## 💬 Before vs After Instruction Tuning
 
-### v4.2 Critical Fixes
+**Before OpenHermes (loss 4.9):**
+```
+You: What is water?
+Nord: Water are non-renewable. Water has long been a subject 
+to health care for centuries... Malt IVs' goals involve 
+improving fertility at all levels...
+```
 
-- **FIX K:** Spike rate calculation clamped to non-negative (was reporting negative rates)
-- **FIX L:** Adaptive spike regulator with 3x asymmetric penalty + anti-death floor
-- **FIX M:** Executive zone uses ReLU clamp instead of LeakyClamp (prevents negative spike propagation)
+**After OpenHermes (loss 3.65):**
+```
+You: What is a computer?
+Nord: A computer science degree plays an important role in 
+the development of software and system application. It will 
+help to get rid of a recording process by creating computing 
+elements... In this article we discuss how the ideal simplest, 
+the more normal solution of the structure...
+```
 
-## Quick Start
+Still not ChatGPT — but the transformation is clear. First SNN to demonstrate instruction-following behavior.
 
-### Requirements
+## ⚡ Live Spike Visualization
+
+```
+┌──────────────────────────────────────────────────────┐
+│ Neural Activity                                      │
+├──────────────────────────────────────────────────────┤
+│ ⚡ Sensory     ███······················   6.0% │
+│ ⚡ Association █████····················   9.2% │
+│ ⚡ Memory      ████████████████████████·  38.7% │
+│ ⚡ Executive   ██████████···············  17.6% │
+├──────────────────────────────────────────────────────┤
+│ Sparsity: 83% silent  (17% neurons active per token) │
+└──────────────────────────────────────────────────────┘
+```
+
+## 🔬 Comparison with Other SNN Language Models
+
+| Feature | Nord | SpikeGPT | SpikeLLM | SpikingLLM |
+|---|---|---|---|---|
+| Trained from scratch | ✅ | ✅ (RWKV-based) | ❌ (converts LLaMA) | Uses KD teacher |
+| Max params (from scratch) | **618M** | 216M | N/A | Paper withdrawn |
+| Instruction tuning | **✅** | ❌ | ❌ | ❌ |
+| Zonal specialization | **✅** | ❌ | ❌ | ❌ |
+| Memory cortex | **✅** | ❌ | ❌ | ❌ |
+| Spike-driven MoE | **✅** | ❌ | ❌ | ❌ |
+| Multi-dataset training | **✅** | ❌ | ❌ | ❌ |
+| Open source | ✅ | ✅ | Partial | No code |
+
+## 🚀 Quick Start
 
 ```bash
 pip install torch transformers lmdb numpy
@@ -167,83 +200,61 @@ pip install torch transformers lmdb numpy
 ### Training
 
 ```bash
-python train_nord_v4.py
-# Will prompt for dataset path (JSONL) and model directory
-# Auto-detects GPU and adjusts batch size:
-#   8GB  → batch=1, accum=32
-#   24GB → batch=2, accum=16
-#   48GB → batch=4, accum=8
-#   80GB → batch=8, accum=4
+# Base training
+python train_nord_tpu_700m.py --dataset data.jsonl
+
+# Instruction tuning (continued)
+python train_nord_tpu_700m.py --dataset openhermes.jsonl --continued
+
+# Scale to 1B
+python train_nord_tpu_700m.py --dataset data.jsonl --preset 1b
 ```
 
-Dataset format (JSONL):
-```json
-{"text": "Your training text here..."}
-```
-
-### Chat / Inference
+### Chat
 
 ```bash
-python chat_v4.py
-# Commands: /stats, /memory, /expert, /reset, /quit
+python chat.py
+# Commands: /tokens, /temp, /rep, /live, /stats, /memory, /expert, /help
 ```
 
-### Configuration (140M)
-
-```python
-NordConfig(
-    d_model=496, n_heads=8, d_ff=1024,
-    n_experts=4, top_k_experts=2,
-    sensory_layers=2, association_layers=2, executive_layers=2,
-    memory_size=128, T=8, T_slow=2,
-    target_spike_rate=0.03, spike_loss_weight=0.5,
-    v_threshold=0.12, tau_mem=0.85,
-)
-```
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 nord-ai/
-├── nord_core_v4.py      # Core architecture (v4.2)
-├── train_nord_v4.py     # Training script with cosine LR decay
-├── chat_v4.py           # Interactive chat / inference
-├── train_nord_500m.py   # Multi-GPU training (500M+ models)
+├── nord_core_700m.py          # Core architecture v4.2 (618M)
+├── train_nord_tpu_700m.py     # Training script (CUDA + TPU support)
+├── chat.py                    # Interactive chat with streaming + spike viz
+├── build_lmdb.py              # Fast LMDB tokenizer
+├── download_data.py           # Dataset downloader (8 datasets)
 └── README.md
 ```
 
-## Tools
+## 🗺️ What's Next
 
-**Nord Neuron Microscope** — Interactive graph visualization of the full model architecture. Inspect any module: zone, layer type, parameter count, weight statistics. Color-coded by zone.
+- **OpenWebMath** — arithmetic and reasoning
+- **StarCoder** — code generation (SNN writing Python = first ever)
+- **Scaling to 1B** — architecture ready via `--preset 1b`
+- **NeurIPS 2026** — paper submission (deadline May 2026)
+- **Neuromorphic deployment** — Intel Loihi / BrainChip Akida
 
-## Scaling Roadmap
+## 🤝 Community & Support
 
-| Scale | Status | Compute Needed |
-|-------|--------|----------------|
-| 140M | ✅ Training | 1× A5000, ~$15 |
-| 500M | 🔄 Planned | 1× L40 48GB, ~$50 |
-| 1-2B | 📋 Design | 4× A100 80GB, ~$500 |
-| 10B+ | 🔬 Research | Cluster / Grant |
+Nord is fully open-source, built with zero institutional funding. Total cost: **$260** out of pocket.
 
-Key question at each scale: **Does zonal specialization persist?** If yes, SNN language models could eventually match transformers in quality while using 10-30x less compute at inference.
+- **Discord**: [Join our server](link) — live updates, architecture discussion
+- **Website**: https://www.nord-ai.net
+- **Wiki**: https://github.com/gtausa197-svg/-Project-Nord-Spiking-Neural-Network-Language-Model/wiki
 
-## Research Goals
+Every contribution goes directly to GPU rental for scaling to 1B.
 
-- **NeurIPS 2026** workshop or main conference submission
-- Demonstrate that SNN architectures can scale to language modeling
-- Prove emergent zonal specialization is a general phenomenon, not an artifact of small scale
-- Explore neuromorphic deployment (Intel Loihi, SpiNNaker) for ultra-efficient inference
-
-## Citation
-
-If you use this work in your research:
+## 📖 Citation
 
 ```bibtex
 @software{nord2026,
   title={Project Nord: Brain-Inspired Spiking Neural Network Language Model},
-  author={Zemondsa},
+  author={Makarenko, Volodymyr},
   year={2026},
-  url={https://github.com/zemondsa/nord-ai}
+  url={https://github.com/gtausa197-svg/-Project-Nord-Spiking-Neural-Network-Language-Model}
 }
 ```
 
@@ -253,19 +264,15 @@ Apache 2.0
 
 ## Acknowledgments
 
-Built solo by an 18-year-old student in Norway. Trained on rented GPUs. No corporate backing, no lab, no team — just curiosity and persistence.
-
-If you're interested in collaborating, providing compute, or have questions — open an issue or reach out.
+- FineWeb-Edu & OpenHermes 2.5 by HuggingFace / Teknium
+- Bo Peng (RWKV) for encouragement
+- Prof. Nikola Kasabov (KEDRI/AUT) for feedback
+- Visual presentation by [mnbnkr](https://mnbnkr.github.io/-Project-Nord-Spiking-Neural-Network-Language-Model/)
+- HuggingFace: https://huggingface.co/zerdovzad/Nord-AI
 
 ---
 
 <p align="center">
-  <i>⚡ "Only 3-9% of neurons fire at any time — just like a real brain."</i>
+  <i>⚡ "Only 7-17% of neurons fire at any time — just like a real brain."</i><br>
+  <b>Built solo. 18 years old. Ukraine → Norway. $260 total.</b>
 </p>
-
-- FineWeb-Edu dataset by HuggingFace
-- My Model https://huggingface.co/zerdovzad/Nord-AI/
-- Thank this person for the visual presentation https://mnbnkr.github.io/-Project-Nord-Spiking-Neural-Network-Language-Model/
-- Thank this person for the visual presentation https://github.com/mnbnkr
-- Visual presentation https://mnbnkr.github.io/-Project-Nord-Spiking-Neural-Network-Language-Model/
-- My Wiki https://github.com/gtausa197-svg/-Project-Nord-Spiking-Neural-Network-Language-Model/wiki
