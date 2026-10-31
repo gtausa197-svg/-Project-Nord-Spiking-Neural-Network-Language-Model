@@ -379,7 +379,7 @@ On comparable prompts, Nord uses 3% active neurons vs GPT-2's 100% — while mai
 
 - 🌐 **Website**: [www.nord-ai.net](https://www.nord-ai.net)
 - 🤗 **HuggingFace**: [zerdovzad/Nord-AI](https://huggingface.co/zerdovzad/Nord-AI)
-- 💬 **Discord**: [Join](https://discord.gg/cFghG89P)
+- 💬 **Discord**: [Join](https://discord.gg/UdqX76VtQe)
 - 📄 **Preprint**: [Zenodo](https://zenodo.org/records/19183472)
 - 📚 **Wiki**: [GitHub Wiki](https://github.com/gtausa197-svg/-Project-Nord-Spiking-Neural-Network-Language-Model/wiki)
 
